@@ -30,6 +30,7 @@ float calcRg(float coordinatesArr[][COORD_NUM], int atomsNum, float cg[]);
 float calcMaxDistance(float coordinatesArr[][COORD_NUM], int atomsNum);
 float getDistance(float point1[], float point2[]);
 
+// updated
 
 /**
  * The entry point of the program.

@@ -24,13 +24,27 @@
 
 void analyzeFile(char *filePath);
 int loadCoordinates(char *filePath, float coordinatesArr[][COORD_NUM]);
-int extractCoordinates(float coordinates[], char line[]);
+int isAtomLine(char line[]);
+void extractCoordinates(float coordinates[], char line[]);
+float convertStrToFloat(char string[]);
 void calcCg(float coordinatesArr[][COORD_NUM], int atomsNum, float cg[]);
 float calcRg(float coordinatesArr[][COORD_NUM], int atomsNum, float cg[]);
 float calcMaxDistance(float coordinatesArr[][COORD_NUM], int atomsNum);
 float getDistance(float point1[], float point2[]);
 
-// updated
+
+/*
+ * todo list
+ * - todo: insufficient arguments
+ * - todo: short atom line (less than 60 chars)
+ * - todo: check ATOM line (with spaces before/after or other letters)
+ * - todo: invalid coordinate (not a number and such) - terminate
+ * - todo: file does not exist - terminate
+ * - todo: check code guidelines
+ * - todo: check if the array argument at the function is okay
+ * - todo: check documentation
+ */
+
 
 /**
  * The entry point of the program.
@@ -43,7 +57,7 @@ int main(int argc, char *argv[])
     if (argc < MIN_ARG_NUM)
     {
         printf(INVALID_USAGE_MSG);
-        return -1; // todo: exit?
+        exit(EXIT_FAILURE);
     }
 
     for (int i = BASE_ARG_IDX; i < argc; i++)
@@ -97,8 +111,9 @@ int loadCoordinates(char *filePath, float coordinatesArr[][COORD_NUM])
 
     while (fgets(line, MAX_LINE_LENGTH, fp) != NULL)
     {
-        if (extractCoordinates(coordinatesArr[curCoordinate], line) == 0)
+        if (isAtomLine(line) == 0)
         {
+            extractCoordinates(coordinatesArr[curCoordinate], line);
             curCoordinate++;
         }
     }
@@ -108,38 +123,62 @@ int loadCoordinates(char *filePath, float coordinatesArr[][COORD_NUM])
 }
 
 /**
- * Extracts the x, y and z coordinates from the given line and adds them to the coordinates array.
- * @param coordinates The array to load the extracted coordinates to.
- * @param line The line to extract the coordinates from.
+ * Checks if the given line is a valid ATOM line that starts with ATOM.
+ * @param line The line to check.
+ * @return 0 if it is valid, -1 otherwise.
  */
-int extractCoordinates(float coordinates[], char line[]) {
+int isAtomLine(char line[]) {
     char atomSubStr[5] = {0}; // todo: change 5 to constant?
-    char coordBuffer[COORD_STR_SIZE] = {0};
     memcpy(atomSubStr, line, 4); // todo: change 4 to constant?
-    atomSubStr[4] = '\0';
+    atomSubStr[4] = '\0'; // todo: change to constant?
 
     if (strcmp(atomSubStr, ATOM_KEYWORD) == 0)
     {
-        // valid ATOM line
-        // extract X coord
-        memcpy(coordBuffer, &line[X_COORD_OFFSET], COORD_STR_SIZE - 1);
-        coordBuffer[COORD_STR_SIZE - 1] = '\0';
-        coordinates[0] = strtof(coordBuffer, NULL);
-
-        // extract Y coord
-        memcpy(coordBuffer, &line[Y_COORD_OFFSET], COORD_STR_SIZE - 1);
-        coordBuffer[COORD_STR_SIZE - 1] = '\0';
-        coordinates[1] = strtof(coordBuffer, NULL);
-
-        // extract Z coord
-        memcpy(coordBuffer, &line[Z_COORD_OFFSET], COORD_STR_SIZE - 1);
-        coordBuffer[COORD_STR_SIZE - 1] = '\0';
-        coordinates[2] = strtof(coordBuffer, NULL);
-
         return 0;
     }
 
     return -1;
+}
+
+/**
+ * Extracts the x, y and z coordinates from the given line and adds them to the coordinates array.
+ * @param coordinates The array to load the extracted coordinates to.
+ * @param line The line to extract the coordinates from.
+ */
+void extractCoordinates(float coordinates[], char line[])
+{
+    char coordBuffer[COORD_STR_SIZE] = {0};
+    // extract X coord
+    memcpy(coordBuffer, &line[X_COORD_OFFSET], COORD_STR_SIZE - 1);
+    coordBuffer[COORD_STR_SIZE - 1] = '\0';
+    coordinates[0] = convertStrToFloat(coordBuffer);
+
+    // extract Y coord
+    memcpy(coordBuffer, &line[Y_COORD_OFFSET], COORD_STR_SIZE - 1);
+    coordBuffer[COORD_STR_SIZE - 1] = '\0';
+    coordinates[1] = convertStrToFloat(coordBuffer);
+
+    // extract Z coord
+    memcpy(coordBuffer, &line[Z_COORD_OFFSET], COORD_STR_SIZE - 1);
+    coordBuffer[COORD_STR_SIZE - 1] = '\0';
+    coordinates[2] = convertStrToFloat(coordBuffer);
+}
+
+/**
+ * Converts a string to a float number.
+ * @return The float number if it is valid, otherwise exits.
+ */
+float convertStrToFloat(char string[])
+{
+    char *end;
+    float result = strtof(string, &end);
+    if (result == 0 && (errno != 0 || end == string))
+    {
+        //todo: fprintf(stderr, "Error message");
+        exit(EXIT_FAILURE);
+    }
+
+    return result;
 }
 
 /**
@@ -187,6 +226,12 @@ float calcRg(float coordinatesArr[][COORD_NUM], int atomsNum, float cg[])
     return sqrtf(sum / atomsNum);
 }
 
+/**
+ * Calculates the maximal distance between two atoms.
+ * @param coordinatesArr The atoms to check their distance.
+ * @param atomsNum The number of atoms.
+ * @return The maximal distance between two atoms.
+ */
 float calcMaxDistance(float coordinatesArr[][COORD_NUM], int atomsNum)
 {
     float maxDistance = 0.0f;
